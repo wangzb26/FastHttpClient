@@ -1,5 +1,19 @@
 package io.itit.itf.okhttp.test;
 
+import io.itit.itf.okhttp.FastHttpClient;
+import io.itit.itf.okhttp.HttpClient;
+import io.itit.itf.okhttp.RequestCall;
+import io.itit.itf.okhttp.Response;
+import io.itit.itf.okhttp.callback.DownloadFileCallback;
+import io.itit.itf.okhttp.callback.StringCallback;
+import io.itit.itf.okhttp.interceptor.DownloadFileInterceptor;
+import io.itit.itf.okhttp.util.FileUtil;
+import okhttp3.Call;
+import okhttp3.Cookie;
+import okhttp3.CookieJar;
+import okhttp3.HttpUrl;
+
+import javax.net.ssl.SSLContext;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -11,33 +25,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import javax.net.ssl.SSLContext;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.itit.itf.okhttp.FastHttpClient;
-import io.itit.itf.okhttp.HttpClient;
-import io.itit.itf.okhttp.RequestCall;
-import io.itit.itf.okhttp.Response;
-import io.itit.itf.okhttp.callback.DownloadFileCallback;
-import io.itit.itf.okhttp.callback.StringCallback;
-import io.itit.itf.okhttp.interceptor.DownloadFileInterceptor;
-import io.itit.itf.okhttp.util.FileUtil;
-import junit.framework.TestCase;
-import okhttp3.Call;
-import okhttp3.Cookie;
-import okhttp3.CookieJar;
-import okhttp3.HttpUrl;
-
 /**
  * 
  * @author icecooly
  *
  */
-public class HttpClientTestCase extends TestCase{
+public class HttpClientTestCase /*extends TestCase*/{
 	//
-	private static Logger logger=LoggerFactory.getLogger(HttpClientTestCase.class);
+	//private static Logger logger=LoggerFactory.getLogger(HttpClientTestCase.class);
+
+	public static void main(String[] args) throws Exception {
+		HttpClientTestCase a = new HttpClientTestCase();
+		a.testCookie();
+	}
 	//
 	/**
 	 * 同步Get请求(访问百度首页,自动处理https单向认证)
@@ -48,7 +48,8 @@ public class HttpClientTestCase extends TestCase{
 				url("https://www.baidu.com").
 				build().
 				execute().string();
-		logger.info(resp);
+		System.out.println(resp);
+//		logger.info(resp);
 	}
 	
 	/**
@@ -60,6 +61,7 @@ public class HttpClientTestCase extends TestCase{
 		executeAsync(new StringCallback() {
 			@Override
 			public void onFailure(Call call, Exception e, String id) {
+
 				logger.error(e.getMessage(),e);
 			}
 			@Override
@@ -82,7 +84,7 @@ public class HttpClientTestCase extends TestCase{
 				build().
 				execute().
 				string();
-		logger.info(html);
+		System.out.println(html);
 	}
 	//
 	@SuppressWarnings("unused")
@@ -99,7 +101,7 @@ public class HttpClientTestCase extends TestCase{
 				addParams(param).
 				build().
 				execute().string();
-		logger.info(resp);
+		System.out.println(resp);
 	}
 	
 	/**
@@ -116,8 +118,8 @@ public class HttpClientTestCase extends TestCase{
 				if(totalLength>0) {
 					percent=(int) (downloadLenth*100/totalLength);
 				}
-				logger.info("updateProgress downloadLenth:"+downloadLenth+
-						" totalLength:"+totalLength+" percent:"+percent+"% isFinish:"+isFinish);
+				//logger.info("updateProgress downloadLenth:"+downloadLenth+
+				//		" totalLength:"+totalLength+" percent:"+percent+"% isFinish:"+isFinish);
 			}
 		}).
 		connectTimeout(0, TimeUnit.SECONDS).
@@ -172,7 +174,7 @@ public class HttpClientTestCase extends TestCase{
 				addFile("file", "logo.jpg",imageContent).
 				build().
 				execute();
-		logger.info(response.body().string());
+		System.out.println(response.body().string());
 	}
 	
 	/**
@@ -189,7 +191,7 @@ public class HttpClientTestCase extends TestCase{
 				addFile("file", "logo.jpg",is).
 				build().
 				execute();
-		logger.info(response.body().string());
+		System.out.println(response.body().string());
 	}
 	
 	/**
@@ -214,7 +216,7 @@ public class HttpClientTestCase extends TestCase{
 				url("http://ip111.cn/").
 				build().
 				execute();
-		logger.info(response.string());
+		System.out.println(response.string());
 	}
 	
 	/**
@@ -257,22 +259,69 @@ public class HttpClientTestCase extends TestCase{
 	    @Override
 	    public void saveFromResponse(HttpUrl arg0, List<Cookie> cookies) {
 	        this.cookies = cookies;
+			for (Cookie item : cookies) {
+				System.out.println(item.name());
+				System.out.println(item.value());
+			}
+			System.out.println("saveFromResponse" + cookies);
 	    }
 	}
 	//自动携带Cookie进行请求
 	public void testCookie() throws Exception {
 		LocalCookieJar cookie=new LocalCookieJar();
 		HttpClient client=FastHttpClient.newBuilder()
+				.connectTimeout(5, TimeUnit.SECONDS)
+				.readTimeout(30, TimeUnit.SECONDS)
+				.writeTimeout(30, TimeUnit.SECONDS)
                 .followRedirects(false) //禁制OkHttp的重定向操作，我们自己处理重定向
                 .followSslRedirects(false)
                 .cookieJar(cookie)   //为OkHttp设置自动携带Cookie的功能
                 .build();
-		String url="https://www.baidu.com/";
-		client.get().addHeader("Referer","https://www.baidu.com/").
+		//String url="http://mb.kingbom.com/mkapp/listPubInfo.shtml";
+		String url="http://192.168.3.21/mkapp/app/getSignKey.shtml";
+		Response response = client.post().addHeader("Referer","https://www.baidu.com/").
 			url(url).
 			build().
 			execute();
 		System.out.println(cookie.cookies);
+		System.out.println(response.toString());
+		System.out.println( response.body().string());
+
+
+		HttpClient client2=FastHttpClient.newBuilder()
+				.followRedirects(false) //禁制OkHttp的重定向操作，我们自己处理重定向
+				.followSslRedirects(false)
+				.cookieJar(cookie)   //为OkHttp设置自动携带Cookie的功能
+				.build();
+		String url2="http://mb.kingbom.com/mkapp/listPubInfo.shtml";
+		Response response2 = client.post().addHeader("Referer","https://www.baidu.com/").
+				url(url2).
+				build().
+				execute();
+		System.out.println(cookie.cookies);
+		System.out.println(response2.body().string());
+
+		HttpClient client3=FastHttpClient.newBuilder()
+				.followRedirects(false) //禁制OkHttp的重定向操作，我们自己处理重定向
+				.followSslRedirects(false)
+				.cookieJar(cookie)   //为OkHttp设置自动携带Cookie的功能
+				.build();
+		String url3="http://192.168.3.21/mkapp/app/getSignKey.shtml";
+		client3.post().addHeader("Referer","https://www.baidu.com/").
+				url(url3).
+				build().
+				executeAsync(new StringCallback() {
+					@Override
+					public void onFailure(Call call, Exception e, String id) {
+
+						logger.error(e.getMessage(),e);
+					}
+					@Override
+					public void onSuccess(Call call, String response, String id) {
+						logger.info("response:{}",response);
+					}
+				});
+		Thread.sleep(3000);
 	}
 	//
 	public void testXForwardedFor() throws Exception{
